@@ -20,3 +20,8 @@ dist/
 .wrangler-tail*.log
 .wrangler-tail*.err
 .wrangler-tail-pid.txt
+
+.login-*.html
+.fresh-login-url.txt
+.login-curl-body.html
+

@@ -20,22 +20,28 @@ function loginHtml(opts: {
   studentHint?: string;
 }): string {
   if (opts.done) {
-    return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>登入成功</title>
-<style>body{font-family:system-ui,sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem;line-height:1.5} .ok{color:#0a7}</style></head>
-<body><h1 class="ok">登入成功</h1><p>已綁定學號 <strong>${escapeHtml(opts.studentHint ?? "")}</strong>。可返回飛書單聊使用「待交作業」。</p>
-<p>每位同學獨立綁定，不會共用他人的教學雲 session。</p></body></html>`;
+    return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>登入成功 · 北郵教學雲作業 Bot</title>
+<style>body{font-family:system-ui,sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#f6f8fa;color:#111}.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem 1.25rem 1.5rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}.brand{font-size:.8rem;color:#2563eb;font-weight:700;letter-spacing:.02em;margin:0 0 .5rem}.ok{color:#0a7;margin:.25rem 0 0.75rem}</style></head>
+<body><div class="card"><p class="brand">BUPT UCloud · 作業 Bot</p><h1 class="ok">登入成功</h1><p>已綁定學號 <strong>${escapeHtml(opts.studentHint ?? "")}</strong>。可返回飛書單聊使用「待交作業」。</p>
+<p>每位同學獨立綁定，不會共用他人的教學雲 session。</p></div></body></html>`;
   }
   const err = opts.error
-    ? `<p style="color:#c00">${escapeHtml(opts.error)}</p>`
+    ? `<p style="color:#c00;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.6rem .75rem">${escapeHtml(opts.error)}</p>`
     : "";
-  return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>教學雲登入</title>
+  return `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>北郵教學雲登入 · 作業 Bot</title>
 <style>
-body{font-family:system-ui,sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem;line-height:1.5}
+body{font-family:system-ui,sans-serif;max-width:28rem;margin:2rem auto;padding:0 1rem;line-height:1.5;background:#f6f8fa;color:#111}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem 1.25rem 1.5rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.brand{font-size:.8rem;color:#2563eb;font-weight:700;letter-spacing:.02em;margin:0 0 .35rem}
+h1{font-size:1.35rem;margin:.15rem 0 .75rem}
 label{display:block;margin:.75rem 0 .25rem;font-weight:600}
-input{width:100%;padding:.5rem;font-size:1rem;box-sizing:border-box}
-button{margin-top:1rem;padding:.6rem 1rem;font-size:1rem;width:100%;cursor:pointer}
+input{width:100%;padding:.5rem;font-size:1rem;box-sizing:border-box;border:1px solid #d1d5db;border-radius:8px}
+button{margin-top:1rem;padding:.65rem 1rem;font-size:1rem;width:100%;cursor:pointer;background:#2563eb;color:#fff;border:0;border-radius:8px;font-weight:600}
 .note{color:#555;font-size:.9rem}
+.footer{margin-top:1rem;font-size:.75rem;color:#9ca3af}
 </style></head><body>
+<div class="card">
+<p class="brand">BUPT UCloud · 作業 Bot（非 VPN / edgetunnel）</p>
 <h1>北郵教學雲綁定</h1>
 <p class="note">此連結約 15 分鐘有效，且只綁定產生連結時的飛書帳號。密碼只提交到本站，不會寫入飛書聊天。</p>
 ${err}
@@ -48,6 +54,8 @@ ${err}
 <button type="submit">登入並綁定</button>
 </form>
 <p class="note">完成後可關閉此頁，返回飛書。</p>
+<p class="footer">BUPT-UCloud homework messenger · playerrone.ccwu.cc</p>
+</div>
 </body></html>`;
 }
 

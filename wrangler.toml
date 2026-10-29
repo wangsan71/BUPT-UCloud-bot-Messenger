@@ -1,4 +1,4 @@
-name = "bupt-ucloud-bot-messenger"
+﻿name = "bupt-ucloud-bot-messenger"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
@@ -15,7 +15,8 @@ migrations_dir = "migrations"
 [vars]
 PUBLIC_BASE_URL = "https://playerrone.ccwu.cc"
 
-# Primary Feishu-reachable paths on apex (Pages keeps everything else)
+# Primary Feishu-reachable paths on apex (Pages/edgetunnel keeps / and other paths)
+# Path routes override Pages/edgetunnel catch-all for these prefixes.
 [[routes]]
 pattern = "playerrone.ccwu.cc/webhook/feishu"
 zone_name = "playerrone.ccwu.cc"
@@ -30,6 +31,14 @@ zone_name = "playerrone.ccwu.cc"
 
 [[routes]]
 pattern = "playerrone.ccwu.cc/login"
+zone_name = "playerrone.ccwu.cc"
+
+[[routes]]
+pattern = "playerrone.ccwu.cc/login*"
+zone_name = "playerrone.ccwu.cc"
+
+[[routes]]
+pattern = "playerrone.ccwu.cc/api/login"
 zone_name = "playerrone.ccwu.cc"
 
 [[routes]]
