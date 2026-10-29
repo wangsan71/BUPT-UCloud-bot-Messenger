@@ -79,7 +79,7 @@ Fan-out one event to all bound channels; WeCom covers classmates without Feishu 
 |-------|------|--------|
 | Phase 0 | Repo skeleton: Hono + wrangler + D1 schema + env docs | Done |
 | Phase 1 | Channel adapters: Feishu / Lark / WeCom webhook verify + command routing; QR onboarding; custom menu stubs | In progress (Feishu receive + menu + QR docs) |
-| Phase 2 | Login & session: bupt-auth + D1; list / detail | Not started |
+| Phase 2 | Login + multi-user bind (encrypted session; homework list later) | In progress |
 | Phase 3 | Upload submit sync to UCloud; submit-result notify | Not started |
 | Phase 4 | Cron: new-todo diff + deadline reminders; three-channel fan-out | Not started |
 | Phase 5 | Self-host docs, custom domain, security review, test checklist | Not started |
@@ -93,3 +93,8 @@ As of 2026-10-30 (UTC+8): Phase 0 done; Phase 1 Feishu webhook verifies/decrypts
 - [BUPT Teaching Cloud](https://ucloud.bupt.edu.cn/) — Portal (CAS); API host `apiucloud.bupt.edu.cn`
 
 Localized docs: `docs/PLAN.zh-Hant.md`, `docs/PLAN.zh-Hans.md`, `docs/PLAN.en.md`.
+
+
+## Multi-user (DM-only)
+
+Each student has a private 1:1 chat with the bot. State is keyed by Feishu `open_id`. Login uses `https://playerrone.ccwu.cc/login?token=…` (preferred) or `/login <id> <password>` in DM. Group chats tip users to DM. See `docs/FEISHU.zh-Hant.md` §6.

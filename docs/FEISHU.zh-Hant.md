@@ -118,3 +118,43 @@ event_key 必須與上表一致，Worker 先按 key 打 stub 日誌；真正列�
 3. 事件：已訂閱 `im.message.receive_v1` **同** `application.bot.menu_v6`，版本已發佈。
 4. 機器人自定義選單已開，三個項嘅 event_key 分別為 `pending_homework`／`submit_homework`／`help`，動作為「推送事件」。
 5. 用 AppLink／分享 QR 加 bot，單聊發一句字或撳選單；Cloudflare Worker 日誌應見到 `feishu_event`／`feishu_menu_stub`。
+
+---
+
+## 6. Phase 2：學生登入與多人綁定（單聊）
+
+**模型**：每位同學與 bot 獨立單聊（p2p）。登入／幫助／待交只在單聊處理；群聊會提示改用單聊。
+
+### 6.1 學生怎麼用
+
+1. 用 AppLink QR／分享名片打開與機器人的**單聊**。
+2. 傳送「登入」或撳選單「幫助」後跟指示；bot 回一條 **15 分鐘內有效** 的連結：
+   `https://playerrone.ccwu.cc/login?token=…`
+3. 在瀏覽器輸入**自己的**學號 + 統一認證密碼 → 綁定成功。
+4. 之後撳「待交作業」或傳 `pending`：已綁定則回「已綁定…作業列表稍後」；未綁定則引導登入。
+5. 「登出」解除本 open_id 綁定。
+
+備選（較不推薦，密碼會留在飛書紀錄）：單聊傳送 `/login <學號> <密碼>`。成功後請自行刪除該訊息。Worker **不會**把密碼寫入日誌或 D1。
+
+### 6.2 營運者要設的 secrets／權限
+
+| 項目 | 說明 |
+|------|------|
+| `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 回覆單聊／選單文字（需 `im:message:send_as_bot`） |
+| `SESSION_ENCRYPTION_KEY` | 長隨機字串；AES-GCM 加密 D1 內 token |
+| `BYRDOCS_OCR_TOKEN` | （可選）統一認證要驗證碼時用 |
+| `PUBLIC_BASE_URL` | 預設 `https://playerrone.ccwu.cc`（wrangler `[vars]`） |
+
+權限：單聊收消息 + **以應用身份發消息**。選單事件 `application.bot.menu_v6` 已訂閱。
+
+### 6.3 多人
+
+第二個飛書帳號加同一 bot → 另一個 `open_id` → 獨立 `users`／`sessions` 列。不會讀到其他人的教學雲 token。
+
+### 6.4 自測清單
+
+1. 單聊傳「幫助」→ 收到說明文字。
+2. 傳「登入」→ 收到 `/login?token=` 連結 → 瀏覽器提交學號密碼 → 頁面顯示成功，飛書收到「登入成功」。
+3. 撳「待交作業」→「已綁定…」。
+4. 另一飛書帳號重複：互不覆蓋。
+5. D1：`channel_bindings` 有對應 open_id；`sessions.access_token_enc` 為密文。

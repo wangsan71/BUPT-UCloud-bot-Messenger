@@ -58,3 +58,8 @@ QR/AppLink must not carry student IDs or passwords.
 ## Worker behavior
 
 Decrypt/verify → for `im.message.receive_v1` or `application.bot.menu_v6` insert into `inbound_messages` → `200 {}`. Menu clicks run named stubs only (homework flows later). Optional message echo when `FEISHU_ECHO_REPLY=1` + App ID/Secret (off by default).
+
+
+## Phase 2 login
+
+Primary docs: `docs/FEISHU.zh-Hant.md` §6 (DM-only login link + multi-user bind).

@@ -11,26 +11,14 @@ import {
 } from "./channels/feishu";
 import { echoReplyEnabled, maybeEchoReply } from "./channels/feishu_reply";
 import { verifyFeishuSignature } from "./crypto/feishu";
+import type { Env } from "./env";
+import { handleFeishuDmEvent } from "./handlers/dm";
+import {
+  handleLoginApiPost,
+  handleLoginPageGet,
+} from "./routes/login_page";
 
-export type Env = {
-  DB: D1Database;
-  FEISHU_APP_ID?: string;
-  FEISHU_APP_SECRET?: string;
-  FEISHU_ENCRYPT_KEY?: string;
-  FEISHU_VERIFICATION_TOKEN?: string;
-  /** Set to "1" to enable optional echo reply (needs APP_ID/SECRET + send scopes). */
-  FEISHU_ECHO_REPLY?: string;
-  LARK_APP_ID?: string;
-  LARK_APP_SECRET?: string;
-  LARK_ENCRYPT_KEY?: string;
-  LARK_VERIFICATION_TOKEN?: string;
-  WECOM_CORP_ID?: string;
-  WECOM_AGENT_ID?: string;
-  WECOM_SECRET?: string;
-  WECOM_TOKEN?: string;
-  WECOM_ENCODING_AES_KEY?: string;
-  SESSION_ENCRYPTION_KEY?: string;
-};
+export type { Env };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -38,12 +26,16 @@ app.get("/", (c) =>
   c.json({
     ok: true,
     service: "bupt-ucloud-bot-messenger",
-    phase: 1,
+    phase: 2,
     channels: ["feishu", "lark", "wecom"],
+    features: ["feishu_webhook", "login_page", "multi_user_bind"],
   }),
 );
 
-app.get("/health", (c) => c.json({ ok: true, phase: 1 }));
+app.get("/health", (c) => c.json({ ok: true, phase: 2 }));
+
+app.get("/login", (c) => handleLoginPageGet(c));
+app.post("/api/login", (c) => handleLoginApiPost(c));
 
 async function logInboundMessage(
   db: D1Database,
@@ -69,7 +61,8 @@ async function logInboundMessage(
         meta.chatType ?? null,
         meta.senderOpenId ?? null,
         meta.messageType ?? null,
-        meta.textSnippet ?? null,
+        // Never persist possible password lines from /login id pass
+        redactSnippet(meta.textSnippet) ?? null,
         JSON.stringify({
           eventType: meta.eventType,
           eventId: meta.eventId,
@@ -80,12 +73,19 @@ async function logInboundMessage(
       )
       .run();
   } catch (e) {
-    // Table may not exist yet; never fail the Feishu ack.
     console.warn(
       "inbound_log_failed",
       e instanceof Error ? e.message : String(e),
     );
   }
+}
+
+function redactSnippet(snippet: string | undefined): string | undefined {
+  if (!snippet) return snippet;
+  if (/^(?:\/login|登入|登录)\s+\S+\s+\S+/i.test(snippet.trim())) {
+    return "[redacted_login_command]";
+  }
+  return snippet;
 }
 
 app.post("/webhook/feishu", async (c) => {
@@ -98,7 +98,6 @@ app.post("/webhook/feishu", async (c) => {
     body = await parseFeishuBody(rawText, encryptKey);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "parse_error";
-    // Feishu treats non-challenge JSON as "Challenge code not returned"
     return c.json(
       {
         ok: false,
@@ -119,7 +118,6 @@ app.post("/webhook/feishu", async (c) => {
     if (!body.challenge) {
       return c.json({ ok: false, error: "missing_challenge" }, 400);
     }
-    // Official response: ONLY { challenge } with 200
     return c.json({ challenge: body.challenge }, 200);
   }
 
@@ -145,41 +143,59 @@ app.post("/webhook/feishu", async (c) => {
   const meta = extractInboundMeta(body);
   const eventType = getEventType(body);
 
-  // Feishu requires HTTP 200 within ~3s; keep work light, then ack.
   if (isMessageReceiveEvent(body) || isBotMenuEvent(body) || eventType) {
     await logInboundMessage(c.env.DB, "feishu", meta);
     console.log("feishu_event", {
       eventType: meta.eventType,
       messageId: meta.messageId,
       chatId: meta.chatId,
+      chatType: meta.chatType,
       senderOpenId: meta.senderOpenId,
       messageType: meta.messageType,
-      textSnippet: meta.textSnippet,
+      textSnippet: redactSnippet(meta.textSnippet),
       menuKey: meta.menuKey,
     });
 
     if (isBotMenuEvent(body)) {
-      const stub = stubMenuHandler(meta.menuKey);
-      console.log("feishu_menu_stub", {
+      console.log("feishu_menu", {
         menuKey: meta.menuKey,
-        stub,
+        stub: stubMenuHandler(meta.menuKey),
         senderOpenId: meta.senderOpenId,
       });
-    }
-
-    if (isMessageReceiveEvent(body) && echoReplyEnabled(c.env)) {
       c.executionCtx.waitUntil(
-        maybeEchoReply(c.env, meta.chatId, meta.textSnippet).catch((err) => {
+        handleFeishuDmEvent(c.env, "feishu", meta, "menu").catch((err) => {
           console.warn(
-            "feishu_echo_failed",
+            "feishu_menu_handler_failed",
             err instanceof Error ? err.message : String(err),
           );
         }),
       );
     }
+
+    if (isMessageReceiveEvent(body)) {
+      c.executionCtx.waitUntil(
+        handleFeishuDmEvent(c.env, "feishu", meta, "message").catch((err) => {
+          console.warn(
+            "feishu_dm_handler_failed",
+            err instanceof Error ? err.message : String(err),
+          );
+        }),
+      );
+      if (echoReplyEnabled(c.env)) {
+        c.executionCtx.waitUntil(
+          maybeEchoReply(c.env, meta.chatId, redactSnippet(meta.textSnippet)).catch(
+            (err) => {
+              console.warn(
+                "feishu_echo_failed",
+                err instanceof Error ? err.message : String(err),
+              );
+            },
+          ),
+        );
+      }
+    }
   }
 
-  // Empty JSON object is accepted; some guides use {"code":0}.
   return c.json({}, 200);
 });
 
@@ -233,12 +249,12 @@ app.post("/webhook/lark", async (c) => {
 app.get("/webhook/wecom", (c) => {
   const echostr = c.req.query("echostr");
   if (echostr) return c.text(echostr);
-  return c.json({ ok: true, channel: "wecom", phase: 1, note: "placeholder verify" });
+  return c.json({ ok: true, channel: "wecom", phase: 2, note: "placeholder verify" });
 });
 
 app.post("/webhook/wecom", async (c) => {
   await c.req.text().catch(() => "");
-  return c.json({ ok: true, channel: "wecom", phase: 1, note: "placeholder" });
+  return c.json({ ok: true, channel: "wecom", phase: 2, note: "placeholder" });
 });
 
 app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));

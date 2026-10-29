@@ -64,6 +64,13 @@
 
 同一事件 fan-out 到已綁定通道；未使用飛書者可用企微（之後可加電郵兜底）。
 
+
+## 5.1 多人適配（單聊隔離）
+
+- 每位學生與機器人是**獨立 1:1 單聊**（類似 Telegram bot），不是共用群內登入。
+- 狀態鍵：`channel` + `feishu open_id`（並記錄 `p2p_chat_id` 以便回覆）；UCloud session 按 user 隔離，互不共用。
+- 群聊：忽略登入指令，或回覆「請在單聊使用」。
+- 其他同學：掃 AppLink QR 加 bot → 單聊「登入」→ 用自己的學號綁定。
 ## 6. 安全與約束
 
 - 統一認證密碼只經自架 Workers；Secrets 用 `wrangler secret`；D1 存加密 token／refresh，避免明文長存。
@@ -78,13 +85,13 @@
 | 階段 | 內容 | 狀態 |
 |------|------|------|
 | Phase 0 | 倉庫骨架：Hono + wrangler + D1 schema + 環境變數說明 | 完成 |
-| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由；掃碼導流說明；自定義選單 stub | 進行中（飛書收消息 + 選單 + QR 文檔） |
-| Phase 2 | 登入與 session：bupt-auth + D1；列表／詳情 | 未開始 |
+| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由；掃碼導流說明；自定義選單 stub | 完成（飛書收消息 + 選單 + QR） |
+| Phase 2 | 登入與 session：多用戶綁定 + 加密 session；列表／詳情 | 進行中（登入／綁定完成；作業列表稍後） |
 | Phase 3 | 上傳提交同步 UCloud；提交結果通知 | 未開始 |
 | Phase 4 | Cron：新待辦 diff + 截止提醒；三通道 fan-out | 未開始 |
 | Phase 5 | 自架部署文件、自訂域名、安全審視與測試清單 | 未開始 |
 
-狀態截至 2026-10-30（UTC+8）：Phase 0 完成；Phase 1 飛書 webhook 已驗簽／解密，ack `im.message.receive_v1` 與 `application.bot.menu_v6`（D1 `inbound_messages`；選單 key stub：`pending_homework`／`submit_homework`／`help`）。掃碼與選單配置見 `docs/FEISHU.zh-Hant.md`。
+狀態截至 2026-10-30（UTC+8）：Phase 0–1 完成；Phase 2 登入進行中——每位同學與 bot **單聊（p2p）**，以 `feishu open_id` 隔離；登入以短時效 HTTPS 表單 `/login?token=…` 為主（備選 `/login 學號 密碼`）；D1 存 AES-GCM 加密 access／refresh token（`SESSION_ENCRYPTION_KEY`），**不長存密碼**。群聊僅提示改用單聊。選單 help／pending／submit 會回文字。掃碼見 `docs/FEISHU.zh-Hant.md`。
 
 ## 8. 參考資料
 

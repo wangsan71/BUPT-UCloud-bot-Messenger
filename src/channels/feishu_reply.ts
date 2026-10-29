@@ -1,6 +1,6 @@
 /**
- * Optional echo / send stub. Only used when FEISHU_ECHO_REPLY=1 and App ID/Secret exist.
- * Kept off by default so Phase 1 stays "ack + D1 log" within Feishu's 3s window.
+ * Feishu send helpers. Used for login/help/pending replies (not only echo).
+ * Requires FEISHU_APP_ID + FEISHU_APP_SECRET + im:message:send_as_bot.
  */
 
 const FEISHU_TOKEN_URL =
@@ -8,18 +8,18 @@ const FEISHU_TOKEN_URL =
 const FEISHU_SEND_URL =
   "https://open.feishu.cn/open-apis/im/v1/messages";
 
-export type EchoReplyEnv = {
+export type FeishuReplyEnv = {
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
   FEISHU_ECHO_REPLY?: string;
 };
 
-export function echoReplyEnabled(env: EchoReplyEnv): boolean {
-  return (
-    env.FEISHU_ECHO_REPLY?.trim() === "1" &&
-    !!env.FEISHU_APP_ID?.trim() &&
-    !!env.FEISHU_APP_SECRET?.trim()
-  );
+export function feishuSendConfigured(env: FeishuReplyEnv): boolean {
+  return !!env.FEISHU_APP_ID?.trim() && !!env.FEISHU_APP_SECRET?.trim();
+}
+
+export function echoReplyEnabled(env: FeishuReplyEnv): boolean {
+  return env.FEISHU_ECHO_REPLY?.trim() === "1" && feishuSendConfigured(env);
 }
 
 async function getTenantAccessToken(
@@ -42,16 +42,20 @@ async function getTenantAccessToken(
   return data.tenant_access_token;
 }
 
-/** Send a short text into chat_id (open_id / chat_id receive_id_type=chat_id). */
+export type ReceiveIdType = "chat_id" | "open_id";
+
+/** Send a short text to chat_id or open_id. */
 export async function sendFeishuText(opts: {
   appId: string;
   appSecret: string;
-  chatId: string;
+  receiveId: string;
   text: string;
+  receiveIdType?: ReceiveIdType;
 }): Promise<boolean> {
   const token = await getTenantAccessToken(opts.appId, opts.appSecret);
   if (!token) return false;
-  const url = `${FEISHU_SEND_URL}?receive_id_type=chat_id`;
+  const idType = opts.receiveIdType ?? "chat_id";
+  const url = `${FEISHU_SEND_URL}?receive_id_type=${idType}`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -59,31 +63,63 @@ export async function sendFeishuText(opts: {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      receive_id: opts.chatId,
+      receive_id: opts.receiveId,
       msg_type: "text",
       content: JSON.stringify({ text: opts.text }),
     }),
   });
   const data = (await res.json().catch(() => null)) as {
     code?: number;
+    msg?: string;
   } | null;
   if (!data || data.code !== 0) {
-    console.warn("feishu_send_failed", data?.code ?? res.status);
+    console.warn("feishu_send_failed", data?.code ?? res.status, data?.msg);
     return false;
   }
   return true;
 }
 
+/** Prefer chat_id when known; else open_id (menu events have no chat_id). */
+export async function replyFeishuDm(
+  env: FeishuReplyEnv,
+  opts: { chatId?: string | null; openId?: string | null; text: string },
+): Promise<boolean> {
+  if (!feishuSendConfigured(env)) {
+    console.warn("feishu_reply_skipped_no_app_creds");
+    return false;
+  }
+  const appId = env.FEISHU_APP_ID!.trim();
+  const appSecret = env.FEISHU_APP_SECRET!.trim();
+  if (opts.chatId) {
+    return sendFeishuText({
+      appId,
+      appSecret,
+      receiveId: opts.chatId,
+      receiveIdType: "chat_id",
+      text: opts.text,
+    });
+  }
+  if (opts.openId) {
+    return sendFeishuText({
+      appId,
+      appSecret,
+      receiveId: opts.openId,
+      receiveIdType: "open_id",
+      text: opts.text,
+    });
+  }
+  console.warn("feishu_reply_skipped_no_recipient");
+  return false;
+}
+
 export async function maybeEchoReply(
-  env: EchoReplyEnv,
+  env: FeishuReplyEnv,
   chatId: string | undefined,
   snippet: string | undefined,
 ): Promise<void> {
   if (!echoReplyEnabled(env) || !chatId) return;
-  const appId = env.FEISHU_APP_ID!.trim();
-  const appSecret = env.FEISHU_APP_SECRET!.trim();
   const text = snippet
     ? `已收到：${snippet.slice(0, 80)}`
     : "已收到（Phase 1 確認）";
-  await sendFeishuText({ appId, appSecret, chatId, text });
+  await replyFeishuDm(env, { chatId, text });
 }

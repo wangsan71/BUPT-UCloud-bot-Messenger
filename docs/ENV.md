@@ -74,7 +74,9 @@ Onboarding: WeCom admin console **contact me / QR** for the app, or a deep-link 
 
 | Secret | Purpose |
 |--------|---------|
-| `SESSION_ENCRYPTION_KEY` | Encrypt Teaching Cloud tokens in D1 (generate a long random string) |
+| `SESSION_ENCRYPTION_KEY` | Encrypt Teaching Cloud tokens in D1 (generate a long random string; required for login) |
+| `BYRDOCS_OCR_TOKEN` | Optional: OCR token when auth.bupt.edu.cn shows captcha |
+| `PUBLIC_BASE_URL` | Non-secret `[vars]` — HTTPS origin for `/login` links (default `https://playerrone.ccwu.cc`) |
 
 ## Local `.dev.vars` example
 
@@ -94,4 +96,14 @@ WECOM_SECRET=
 WECOM_TOKEN=
 WECOM_ENCODING_AES_KEY=
 SESSION_ENCRYPTION_KEY=
+BYRDOCS_OCR_TOKEN=
+PUBLIC_BASE_URL=https://playerrone.ccwu.cc
 ```
+## Login endpoints (Phase 2)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/login?token=…` | Short-lived HTML form bound to one Feishu `open_id` |
+| POST | `/api/login` | Accepts form/JSON `{token, student_id, password}` → CAS login → encrypted D1 session |
+
+Passwords are never written to logs or D1. Only AES-GCM encrypted access/refresh tokens are stored, keyed per Feishu `open_id`.

@@ -54,3 +54,8 @@ Worker 将点击写入 D1 `inbound_messages`（`message_type=bot_menu`）并打 
 3. 或群设置 → 群机器人 → 添加机器人。
 
 QR／链接仅用于打开 bot，不要写入学号或密码。详见繁体版 `FEISHU.zh-Hant.md`。
+
+
+## Phase 2 login
+
+Primary docs: `docs/FEISHU.zh-Hant.md` §6 (DM-only login link + multi-user bind).

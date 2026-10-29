@@ -79,7 +79,7 @@
 |------|------|------|
 | Phase 0 | 仓库骨架：Hono + wrangler + D1 schema + 环境变量说明 | 完成 |
 | Phase 1 | 通道适配：飞书／Lark／企微 webhook 验签与指令路由；扫码导流说明；自定义菜单 stub | 进行中（飞书收消息 + 菜单 + QR 文档） |
-| Phase 2 | 登录与 session：bupt-auth + D1；列表／详情 | 未开始 |
+| Phase 2 | 登录与多用户绑定（加密 session；作业列表稍后） | 进行中 |
 | Phase 3 | 上传提交同步 UCloud；提交结果通知 | 未开始 |
 | Phase 4 | Cron：新待办 diff + 截止提醒；三通道 fan-out | 未开始 |
 | Phase 5 | 自建部署文档、自定义域名、安全审视与测试清单 | 未开始 |
@@ -93,3 +93,8 @@
 - [北邮教学云](https://ucloud.bupt.edu.cn/) — 平台入口（需 CAS）；API 主机 `apiucloud.bupt.edu.cn`
 
 多语文档：`docs/PLAN.zh-Hant.md`、`docs/PLAN.zh-Hans.md`、`docs/PLAN.en.md`。
+
+
+## 多人适配（仅单聊）
+
+每位同学与 bot 独立单聊；以飞书 open_id 隔离。登录优先用短时 HTTPS 表单。详见 `docs/FEISHU.zh-Hant.md`（主文档）§6。
