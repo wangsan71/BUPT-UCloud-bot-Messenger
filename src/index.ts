@@ -1,9 +1,11 @@
 import { Hono } from "hono";
+import {
+  isUrlVerification,
+  parseFeishuBody,
+  tokenMatches,
+} from "./channels/feishu";
+import { verifyFeishuSignature } from "./crypto/feishu";
 
-/**
- * Cloudflare Worker bindings (Phase 0 stubs).
- * Fill secrets via `wrangler secret`; create D1 and replace database_id in wrangler.toml.
- */
 export type Env = {
   DB: D1Database;
   FEISHU_APP_ID?: string;
@@ -28,47 +30,87 @@ app.get("/", (c) =>
   c.json({
     ok: true,
     service: "bupt-ucloud-bot-messenger",
-    phase: 0,
+    phase: 1,
     channels: ["feishu", "lark", "wecom"],
   }),
 );
 
-app.get("/health", (c) => c.json({ ok: true }));
+app.get("/health", (c) => c.json({ ok: true, phase: 1 }));
 
-/** Feishu (China) event / message webhook — verify + route in Phase 1. */
 app.post("/webhook/feishu", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  // URL verification challenge (Feishu / Lark often POST { challenge, token, type })
-  if (body && typeof body === "object" && "challenge" in body) {
-    return c.json({ challenge: (body as { challenge: string }).challenge });
+  const rawText = await c.req.text();
+  const encryptKey = c.env.FEISHU_ENCRYPT_KEY;
+  const verificationToken = c.env.FEISHU_VERIFICATION_TOKEN;
+
+  let body;
+  try {
+    body = await parseFeishuBody(rawText, encryptKey);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "parse_error";
+    return c.json({ ok: false, error: msg }, 400);
   }
-  return c.json({ ok: true, channel: "feishu", phase: 0, note: "placeholder" });
+
+  if (isUrlVerification(body)) {
+    if (body.token && verificationToken && body.token !== verificationToken) {
+      return c.json({ ok: false, error: "bad_token" }, 401);
+    }
+    return c.json({ challenge: body.challenge });
+  }
+
+  const ts =
+    c.req.header("X-Lark-Request-Timestamp") ??
+    c.req.header("X-Feishu-Request-Timestamp");
+  const nonce =
+    c.req.header("X-Lark-Request-Nonce") ??
+    c.req.header("X-Feishu-Request-Nonce");
+  const sig =
+    c.req.header("X-Lark-Signature") ?? c.req.header("X-Feishu-Signature");
+  if (encryptKey && ts && nonce && sig) {
+    const ok = await verifyFeishuSignature(encryptKey, ts, nonce, rawText, sig);
+    if (!ok) {
+      return c.json({ ok: false, error: "bad_signature" }, 401);
+    }
+  }
+
+  if (!tokenMatches(body, verificationToken)) {
+    return c.json({ ok: false, error: "bad_token" }, 401);
+  }
+
+  return c.json({ ok: true, channel: "feishu", phase: 1 });
 });
 
-/** Lark (Global) event / message webhook — verify + route in Phase 1. */
 app.post("/webhook/lark", async (c) => {
-  const body = await c.req.json().catch(() => null);
-  if (body && typeof body === "object" && "challenge" in body) {
-    return c.json({ challenge: (body as { challenge: string }).challenge });
+  const rawText = await c.req.text();
+  const encryptKey = c.env.LARK_ENCRYPT_KEY;
+  const verificationToken = c.env.LARK_VERIFICATION_TOKEN;
+
+  let body;
+  try {
+    body = await parseFeishuBody(rawText, encryptKey);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "parse_error";
+    return c.json({ ok: false, error: msg }, 400);
   }
-  return c.json({ ok: true, channel: "lark", phase: 0, note: "placeholder" });
+
+  if (isUrlVerification(body)) {
+    if (body.token && verificationToken && body.token !== verificationToken) {
+      return c.json({ ok: false, error: "bad_token" }, 401);
+    }
+    return c.json({ challenge: body.challenge });
+  }
+
+  return c.json({ ok: true, channel: "lark", phase: 1, note: "placeholder" });
 });
 
-/**
- * WeCom callback: GET for URL verification, POST for messages/events.
- * Echo echostr after decrypt in Phase 1; Phase 0 only acknowledges.
- */
 app.get("/webhook/wecom", (c) => {
   const echostr = c.req.query("echostr");
-  if (echostr) {
-    return c.text(echostr);
-  }
-  return c.json({ ok: true, channel: "wecom", phase: 0, note: "placeholder verify" });
+  if (echostr) return c.text(echostr);
+  return c.json({ ok: true, channel: "wecom", phase: 1, note: "placeholder verify" });
 });
 
 app.post("/webhook/wecom", async (c) => {
   await c.req.text().catch(() => "");
-  return c.json({ ok: true, channel: "wecom", phase: 0, note: "placeholder" });
+  return c.json({ ok: true, channel: "wecom", phase: 1, note: "placeholder" });
 });
 
 app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));

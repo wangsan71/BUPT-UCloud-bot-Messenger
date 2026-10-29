@@ -73,3 +73,11 @@ WECOM_TOKEN=
 WECOM_ENCODING_AES_KEY=
 SESSION_ENCRYPTION_KEY=
 ```
+
+## Feishu Request URL (Phase 1)
+
+Paste this in Feishu Open Platform → Events & Callbacks → Request URL, then save:
+
+`https://bupt-ucloud-bot-messenger.thomassan1031.workers.dev/webhook/feishu`
+
+If Feishu shows timeout (请求超时), China often cannot reach `*.workers.dev`. Prefer a Workers **custom domain** on a zone already in this Cloudflare account. As of deploy, `areoneplayer.top` is **not** in the account (only `playerrone.ccwu.cc`). Add the site in Cloudflare Dashboard and point nameservers first; note: no ICP filing may still block access from mainland China.
