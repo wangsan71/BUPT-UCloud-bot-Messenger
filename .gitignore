@@ -15,3 +15,8 @@ dist/
 .feishu-encrypt-key.txt
 .wrangler-tail-pid.txt
 
+
+.diag-token.tmp
+.wrangler-tail*.log
+.wrangler-tail*.err
+.wrangler-tail-pid.txt
