@@ -39,22 +39,37 @@ app.get("/health", (c) => c.json({ ok: true, phase: 1 }));
 
 app.post("/webhook/feishu", async (c) => {
   const rawText = await c.req.text();
-  const encryptKey = c.env.FEISHU_ENCRYPT_KEY;
-  const verificationToken = c.env.FEISHU_VERIFICATION_TOKEN;
+  const encryptKey = c.env.FEISHU_ENCRYPT_KEY?.trim();
+  const verificationToken = c.env.FEISHU_VERIFICATION_TOKEN?.trim();
 
   let body;
   try {
     body = await parseFeishuBody(rawText, encryptKey);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "parse_error";
-    return c.json({ ok: false, error: msg }, 400);
+    // Feishu treats non-challenge JSON as "Challenge code not returned"
+    return c.json(
+      {
+        ok: false,
+        error: msg,
+        hint:
+          msg === "decrypt_failed" || msg === "missing_encrypt_key"
+            ? "Check FEISHU_ENCRYPT_KEY matches console, or clear Encrypt Key for URL verify then re-enable"
+            : undefined,
+      },
+      400,
+    );
   }
 
   if (isUrlVerification(body)) {
     if (body.token && verificationToken && body.token !== verificationToken) {
       return c.json({ ok: false, error: "bad_token" }, 401);
     }
-    return c.json({ challenge: body.challenge });
+    if (!body.challenge) {
+      return c.json({ ok: false, error: "missing_challenge" }, 400);
+    }
+    // Official response: ONLY { challenge } with 200
+    return c.json({ challenge: body.challenge }, 200);
   }
 
   const ts =
@@ -81,8 +96,8 @@ app.post("/webhook/feishu", async (c) => {
 
 app.post("/webhook/lark", async (c) => {
   const rawText = await c.req.text();
-  const encryptKey = c.env.LARK_ENCRYPT_KEY;
-  const verificationToken = c.env.LARK_VERIFICATION_TOKEN;
+  const encryptKey = c.env.LARK_ENCRYPT_KEY?.trim();
+  const verificationToken = c.env.LARK_VERIFICATION_TOKEN?.trim();
 
   let body;
   try {
@@ -96,7 +111,10 @@ app.post("/webhook/lark", async (c) => {
     if (body.token && verificationToken && body.token !== verificationToken) {
       return c.json({ ok: false, error: "bad_token" }, 401);
     }
-    return c.json({ challenge: body.challenge });
+    if (!body.challenge) {
+      return c.json({ ok: false, error: "missing_challenge" }, 400);
+    }
+    return c.json({ challenge: body.challenge }, 200);
   }
 
   return c.json({ ok: true, channel: "lark", phase: 1, note: "placeholder" });

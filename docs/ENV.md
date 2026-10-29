@@ -20,7 +20,25 @@ Do **not** commit real values. Use `.dev.vars` locally (gitignored) and `wrangle
 
 Webhook path: `POST /webhook/feishu`
 
-Onboarding: publish the bot in Feishu Open Platform and share the **platform add-bot QR** or a **deep-link QR** that opens the bot chat.
+**Request URL (use custom domain; China often cannot reach `*.workers.dev`):**
+
+`https://ucloud-bot.playerrone.ccwu.cc/webhook/feishu`
+
+### Encrypt Key / URL verification
+
+When Encrypt Key is set, Feishu POSTs `{"encrypt":"..."}` (AES-256-CBC). The Worker decrypts with `SHA-256(Encrypt Key)` then returns **only** `{"challenge":"..."}`.
+
+Algorithm matches [Feishu receive-events docs](https://open.feishu.cn/document/server-docs/event-subscription-guide/event-subscription-configure-/encrypt-key-encryption-configuration-case) and `@larksuiteoapi/node-sdk` `AESCipher`.
+
+**Temporary workaround** if console shows 「Challenge code没有返回」 while debugging:
+
+1. Clear / leave empty **Encrypt Key** in Feishu console → Encryption strategy.
+2. Save Request URL (plaintext `url_verification` works).
+3. Re-fill Encrypt Key and save again once decrypt is confirmed.
+
+When piping secrets on Windows, avoid a trailing newline (e.g. write bytes to a file and `wrangler secret put NAME < file`). The Worker also `.trim()`s encrypt key / token.
+
+Onboarding: publish the bot and share the **platform add-bot QR** or a **deep-link QR**.
 
 ## Lark (Global)
 
@@ -33,7 +51,7 @@ Onboarding: publish the bot in Feishu Open Platform and share the **platform add
 
 Webhook path: `POST /webhook/lark`
 
-Onboarding: same pattern as Feishu — **QR to add the bot** (console QR or deep link).
+Onboarding: same pattern as Feishu — **QR to add the bot**.
 
 ## WeCom (企业微信)
 
@@ -73,11 +91,3 @@ WECOM_TOKEN=
 WECOM_ENCODING_AES_KEY=
 SESSION_ENCRYPTION_KEY=
 ```
-
-## Feishu Request URL (Phase 1)
-
-Paste this in Feishu Open Platform → Events & Callbacks → Request URL, then save:
-
-`https://bupt-ucloud-bot-messenger.thomassan1031.workers.dev/webhook/feishu`
-
-If Feishu shows timeout (请求超时), China often cannot reach `*.workers.dev`. Prefer a Workers **custom domain** on a zone already in this Cloudflare account. As of deploy, `areoneplayer.top` is **not** in the account (only `playerrone.ccwu.cc`). Add the site in Cloudflare Dashboard and point nameservers first; note: no ICP filing may still block access from mainland China.

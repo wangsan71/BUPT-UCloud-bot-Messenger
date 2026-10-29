@@ -1,4 +1,4 @@
-﻿export type FeishuEventBody = {
+export type FeishuEventBody = {
   challenge?: string;
   token?: string;
   type?: string;
@@ -19,12 +19,17 @@ export async function parseFeishuBody(
     throw new Error("invalid_json");
   }
   if (parsed.encrypt && typeof parsed.encrypt === "string") {
-    if (!encryptKey) {
+    const key = encryptKey?.trim();
+    if (!key) {
       throw new Error("missing_encrypt_key");
     }
     const { decryptFeishuEncrypt } = await import("../crypto/feishu");
-    const plain = await decryptFeishuEncrypt(encryptKey, parsed.encrypt);
-    return JSON.parse(plain) as FeishuEventBody;
+    const plain = await decryptFeishuEncrypt(key, parsed.encrypt);
+    try {
+      return JSON.parse(plain) as FeishuEventBody;
+    } catch {
+      throw new Error("decrypt_json_invalid");
+    }
   }
   return parsed;
 }
@@ -32,7 +37,10 @@ export async function parseFeishuBody(
 export function isUrlVerification(body: FeishuEventBody): boolean {
   return (
     body.type === "url_verification" ||
-    (typeof body.challenge === "string" && body.challenge.length > 0 && !body.header)
+    (typeof body.challenge === "string" &&
+      body.challenge.length > 0 &&
+      !body.header &&
+      !body.schema)
   );
 }
 
@@ -40,8 +48,9 @@ export function tokenMatches(
   body: FeishuEventBody,
   expected: string | undefined,
 ): boolean {
-  if (!expected) return true;
+  const want = expected?.trim();
+  if (!want) return true;
   const got = body.token ?? body.header?.token;
-  if (!got) return true; // some encrypted paths may omit; challenge still required
-  return got === expected;
+  if (!got) return true;
+  return got === want;
 }
