@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bupt-ucloud-bot"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "6d175d96-3cd6-42d5-808d-7b73f17e4d50"
 migrations_dir = "migrations"
 
 # Example cron for Phase 4 (todo diff / deadline reminders). Leave commented until ready.
