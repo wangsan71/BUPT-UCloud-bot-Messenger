@@ -1,4 +1,4 @@
-export type Env = {
+﻿export type Env = {
   DB: D1Database;
   FEISHU_APP_ID?: string;
   FEISHU_APP_SECRET?: string;
@@ -20,4 +20,6 @@ export type Env = {
   BYRDOCS_OCR_TOKEN?: string;
   /** Public HTTPS origin for login links (default https://playerrone.ccwu.cc) */
   PUBLIC_BASE_URL?: string;
+  /** Temporary send diagnostic gate (remove after debug). */
+  DIAG_TOKEN?: string;
 };

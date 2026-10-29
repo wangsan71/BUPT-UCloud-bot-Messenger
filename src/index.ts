@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+﻿import { Hono } from "hono";
 import {
   extractInboundMeta,
   getEventType,
@@ -9,7 +9,7 @@ import {
   stubMenuHandler,
   tokenMatches,
 } from "./channels/feishu";
-import { echoReplyEnabled, maybeEchoReply } from "./channels/feishu_reply";
+import { echoReplyEnabled, maybeEchoReply, sendFeishuText, feishuSendConfigured, probeFeishuToken } from "./channels/feishu_reply";
 import { verifyFeishuSignature } from "./crypto/feishu";
 import type { Env } from "./env";
 import { handleFeishuDmEvent } from "./handlers/dm";
@@ -36,6 +36,71 @@ app.get("/health", (c) => c.json({ ok: true, phase: 2 }));
 
 app.get("/login", (c) => handleLoginPageGet(c));
 app.post("/api/login", (c) => handleLoginApiPost(c));
+
+/** One-shot send diagnostic: returns Feishu API code/msg only (no secrets). */
+app.get("/api/diag/feishu-send", async (c) => {
+  const want = c.env.DIAG_TOKEN?.trim();
+  const got = c.req.query("token")?.trim();
+  if (!want || !got || got !== want) {
+    return c.json({ ok: false, error: "forbidden" }, 403);
+  }
+  if (!feishuSendConfigured(c.env)) {
+    return c.json({ ok: false, error: "missing_app_creds" }, 500);
+  }
+  const chatId =
+    c.req.query("chat_id")?.trim() ||
+    "oc_9f35bc887eee6ad34812196625d8eff8";
+  const openId =
+    c.req.query("open_id")?.trim() ||
+    "ou_afe056cb006cce91c8fc31cfae6b1fc8";
+  const text =
+    c.req.query("text")?.trim() ||
+    "【診斷】Bot 發消息測試 — 若你看到這句，回覆通路已通。";
+  const appId = c.env.FEISHU_APP_ID!.trim();
+  const appSecret = c.env.FEISHU_APP_SECRET!.trim();
+  const tokenProbe = await probeFeishuToken(appId, appSecret);
+  const viaChat = await sendFeishuText({
+    appId,
+    appSecret,
+    receiveId: chatId,
+    receiveIdType: "chat_id",
+    text,
+    db: c.env.DB,
+  });
+  let viaOpen = null as Awaited<ReturnType<typeof sendFeishuText>> | null;
+  if (!viaChat.ok) {
+    viaOpen = await sendFeishuText({
+      appId,
+      appSecret,
+      receiveId: openId,
+      receiveIdType: "open_id",
+      text,
+      db: c.env.DB,
+    });
+  }
+  return c.json({
+    ok: viaChat.ok || !!viaOpen?.ok,
+    via_chat_id: {
+      ok: viaChat.ok,
+      stage: viaChat.stage,
+      httpStatus: viaChat.httpStatus,
+      apiCode: viaChat.apiCode,
+      apiMsg: viaChat.apiMsg,
+    },
+    via_open_id: viaOpen
+      ? {
+          ok: viaOpen.ok,
+          stage: viaOpen.stage,
+          httpStatus: viaOpen.httpStatus,
+          apiCode: viaOpen.apiCode,
+          apiMsg: viaOpen.apiMsg,
+        }
+      : null,
+    token_probe: tokenProbe,
+    app_id_prefix: appId.slice(0, 8),
+  });
+});
+
 
 async function logInboundMessage(
   db: D1Database,
@@ -82,7 +147,7 @@ async function logInboundMessage(
 
 function redactSnippet(snippet: string | undefined): string | undefined {
   if (!snippet) return snippet;
-  if (/^(?:\/login|登入|登录)\s+\S+\s+\S+/i.test(snippet.trim())) {
+  if (/^(?:\/login|鐧诲叆|鐧诲綍)\s+\S+\s+\S+/i.test(snippet.trim())) {
     return "[redacted_login_command]";
   }
   return snippet;
@@ -260,3 +325,5 @@ app.post("/webhook/wecom", async (c) => {
 app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
 
 export default app;
+
+

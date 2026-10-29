@@ -158,3 +158,23 @@ event_key 必須與上表一致，Worker 先按 key 打 stub 日誌；真正列�
 3. 撳「待交作業」→「已綁定…」。
 4. 另一飛書帳號重複：互不覆蓋。
 5. D1：`channel_bindings` 有對應 open_id；`sessions.access_token_enc` 為密文。
+## 故障：收得到訊息但 bot 唔回覆（錯誤碼 21001）
+
+診斷結果（Worker → 飛書取 	enant_access_token）：
+
+- HTTP 200 + `code: 21001`
+- 訊息類似：`Access denied due to platform policy` / `requested scope is blocked by data security policy`
+- **唔係** `im:message:send_as_bot` 未開（權限不足通常係其他錯誤碼）；亦唔係 Request URL / Encrypt Key 問題（入站 webhook 正常）
+
+常見根因（2026-10 起社區可複現）：用「豆包帳號」身份登入飛書後建立嘅自建應用，一旦開咗 OpenAPI 權限，取 token 會被平台策略拒絕。用**手機號／郵箱註冊**嘅飛書帳號新建同權限應用可恢復。
+
+### 你要做嘅
+
+1. 用手機號或郵箱註冊／登入 [飛書開放平台](https://open.feishu.cn/app)（避免豆包帳號身份）。
+2. **新建**企業自建應用 → 開機器人能力 → 申請 `im:message:send_as_bot`、`im:message.p2p_msg:readonly` 等 → **建立版本並發佈**。
+3. 事件訂閱 Request URL 仍用 `https://playerrone.ccwu.cc/webhook/feishu`；Encrypt Key／Verification Token 同步到 Worker secrets。
+4. 把新 `FEISHU_APP_ID` / `FEISHU_APP_SECRET` 用 `npx wrangler secret put` 更新；舊 App 可保留作對照。
+5. 向飛書支援可附 `x-tt-logid`（診斷接口會回）。
+
+臨時繞過（僅管理員）：從 D1 `login_challenges` 手動發登入 URL 畀用戶；bot 仍無法主動推送，直至 21001 解除。
+
