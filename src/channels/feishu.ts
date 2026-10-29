@@ -24,7 +24,20 @@ export type FeishuInboundMeta = {
   senderOpenId: string | undefined;
   messageType: string | undefined;
   textSnippet: string | undefined;
+  /** Bot custom menu event_key (application.bot.menu_v6). */
+  menuKey: string | undefined;
 };
+
+/** Suggested menu event_key values — configure the same keys in Feishu console. */
+export const MENU_KEYS = {
+  pendingHomework: "pending_homework",
+  submitHomework: "submit_homework",
+  help: "help",
+} as const;
+
+export type MenuKeyStub =
+  | (typeof MENU_KEYS)[keyof typeof MENU_KEYS]
+  | string;
 
 export async function parseFeishuBody(
   rawText: string,
@@ -97,8 +110,35 @@ function tryParseContentText(content: unknown): string | undefined {
   return undefined;
 }
 
+export function isMessageReceiveEvent(body: FeishuEventBody): boolean {
+  const t = getEventType(body);
+  return t === "im.message.receive_v1" || t === "im.message.receive_v2";
+}
+
+/** Bot custom menu click — console action "推送事件" / Push event. */
+export function isBotMenuEvent(body: FeishuEventBody): boolean {
+  return getEventType(body) === "application.bot.menu_v6";
+}
+
 /**
- * Extract minimal fields from im.message.receive_v1 (schema 2.0) or close shapes.
+ * Stub router for menu keys configured in Feishu console.
+ * Real homework flows land in later phases; here we only name the handler.
+ */
+export function stubMenuHandler(menuKey: string | undefined): string {
+  switch (menuKey) {
+    case MENU_KEYS.pendingHomework:
+      return "stub_pending_homework";
+    case MENU_KEYS.submitHomework:
+      return "stub_submit_homework";
+    case MENU_KEYS.help:
+      return "stub_help";
+    default:
+      return "stub_unknown_menu";
+  }
+}
+
+/**
+ * Extract minimal fields from im.message.receive_v1 or application.bot.menu_v6.
  * Safe on unknown events — returns undefineds rather than throwing.
  */
 export function extractInboundMeta(body: FeishuEventBody): FeishuInboundMeta {
@@ -113,11 +153,40 @@ export function extractInboundMeta(body: FeishuEventBody): FeishuInboundMeta {
       message_type?: string;
       content?: string;
     };
-    // legacy v1.0-ish nesting sometimes flattens under event
     message_id?: string;
     chat_id?: string;
     open_id?: string;
+    // application.bot.menu_v6
+    event_key?: string;
+    operator?: {
+      operator_name?: string;
+      operator_id?: {
+        open_id?: string;
+        user_id?: string;
+        union_id?: string;
+      };
+    };
+    timestamp?: number;
   };
+
+  if (isBotMenuEvent(body)) {
+    const menuKey =
+      typeof ev.event_key === "string" && ev.event_key.length > 0
+        ? ev.event_key.slice(0, 30)
+        : undefined;
+    const senderOpenId = ev.operator?.operator_id?.open_id ?? ev.open_id;
+    return {
+      eventType,
+      eventId,
+      messageId: undefined,
+      chatId: undefined,
+      chatType: "p2p",
+      senderOpenId,
+      messageType: "bot_menu",
+      textSnippet: menuKey ? `menu:${menuKey}` : undefined,
+      menuKey,
+    };
+  }
 
   const message = ev.message;
   const messageId = message?.message_id ?? ev.message_id;
@@ -140,10 +209,6 @@ export function extractInboundMeta(body: FeishuEventBody): FeishuInboundMeta {
     senderOpenId,
     messageType,
     textSnippet,
+    menuKey: undefined,
   };
-}
-
-export function isMessageReceiveEvent(body: FeishuEventBody): boolean {
-  const t = getEventType(body);
-  return t === "im.message.receive_v1" || t === "im.message.receive_v2";
 }

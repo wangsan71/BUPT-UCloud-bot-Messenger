@@ -78,13 +78,13 @@ Fan-out one event to all bound channels; WeCom covers classmates without Feishu 
 | Phase | Work | Status |
 |-------|------|--------|
 | Phase 0 | Repo skeleton: Hono + wrangler + D1 schema + env docs | Done |
-| Phase 1 | Channel adapters: Feishu / Lark / WeCom webhook verify + command routing; QR onboarding notes | In progress (Feishu receive + QR docs) |
+| Phase 1 | Channel adapters: Feishu / Lark / WeCom webhook verify + command routing; QR onboarding; custom menu stubs | In progress (Feishu receive + menu + QR docs) |
 | Phase 2 | Login & session: bupt-auth + D1; list / detail | Not started |
 | Phase 3 | Upload submit sync to UCloud; submit-result notify | Not started |
 | Phase 4 | Cron: new-todo diff + deadline reminders; three-channel fan-out | Not started |
 | Phase 5 | Self-host docs, custom domain, security review, test checklist | Not started |
 
-As of 2026-10-30 (UTC+8): Phase 0 done; Phase 1 Feishu webhook verifies/decrypts and acks `im.message.receive_v1` (D1 `inbound_messages`). See `docs/FEISHU.en.md`.
+As of 2026-10-30 (UTC+8): Phase 0 done; Phase 1 Feishu webhook verifies/decrypts and acks `im.message.receive_v1` and `application.bot.menu_v6` (D1 `inbound_messages`; menu key stubs: `pending_homework` / `submit_homework` / `help`). See `docs/FEISHU.en.md`.
 
 ## 8. References
 

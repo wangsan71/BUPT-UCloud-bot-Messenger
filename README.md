@@ -24,7 +24,7 @@ Share a **scan-to-add-bot** QR for each channel:
 ## Phase status
 
 - **Phase 0** done: Hono + wrangler + D1 schema + env docs.
-- **Phase 1 (in progress):** Feishu webhook decrypt/verify, URL challenge, `im.message.receive_v1` ack + D1 `inbound_messages` log; QR/scopes docs. Lark/WeCom still thin; CAS login later.
+- **Phase 1 (in progress):** Feishu webhook decrypt/verify, URL challenge, `im.message.receive_v1` + `application.bot.menu_v6` ack + D1 `inbound_messages` log; custom-menu stubs (`pending_homework` / `submit_homework` / `help`); QR/scopes docs. Lark/WeCom still thin; CAS login later.
 
 ## Develop
 

@@ -2,9 +2,11 @@ import { Hono } from "hono";
 import {
   extractInboundMeta,
   getEventType,
+  isBotMenuEvent,
   isMessageReceiveEvent,
   isUrlVerification,
   parseFeishuBody,
+  stubMenuHandler,
   tokenMatches,
 } from "./channels/feishu";
 import { echoReplyEnabled, maybeEchoReply } from "./channels/feishu_reply";
@@ -73,6 +75,7 @@ async function logInboundMessage(
           eventId: meta.eventId,
           messageId: meta.messageId,
           chatId: meta.chatId,
+          menuKey: meta.menuKey,
         }),
       )
       .run();
@@ -143,7 +146,7 @@ app.post("/webhook/feishu", async (c) => {
   const eventType = getEventType(body);
 
   // Feishu requires HTTP 200 within ~3s; keep work light, then ack.
-  if (isMessageReceiveEvent(body) || eventType) {
+  if (isMessageReceiveEvent(body) || isBotMenuEvent(body) || eventType) {
     await logInboundMessage(c.env.DB, "feishu", meta);
     console.log("feishu_event", {
       eventType: meta.eventType,
@@ -152,7 +155,17 @@ app.post("/webhook/feishu", async (c) => {
       senderOpenId: meta.senderOpenId,
       messageType: meta.messageType,
       textSnippet: meta.textSnippet,
+      menuKey: meta.menuKey,
     });
+
+    if (isBotMenuEvent(body)) {
+      const stub = stubMenuHandler(meta.menuKey);
+      console.log("feishu_menu_stub", {
+        menuKey: meta.menuKey,
+        stub,
+        senderOpenId: meta.senderOpenId,
+      });
+    }
 
     if (isMessageReceiveEvent(body) && echoReplyEnabled(c.env)) {
       c.executionCtx.waitUntil(
@@ -198,13 +211,20 @@ app.post("/webhook/lark", async (c) => {
   }
 
   const meta = extractInboundMeta(body);
-  if (isMessageReceiveEvent(body) || getEventType(body)) {
+  if (isMessageReceiveEvent(body) || isBotMenuEvent(body) || getEventType(body)) {
     await logInboundMessage(c.env.DB, "lark", meta);
     console.log("lark_event", {
       eventType: meta.eventType,
       messageId: meta.messageId,
       chatId: meta.chatId,
+      menuKey: meta.menuKey,
     });
+    if (isBotMenuEvent(body)) {
+      console.log("lark_menu_stub", {
+        menuKey: meta.menuKey,
+        stub: stubMenuHandler(meta.menuKey),
+      });
+    }
   }
 
   return c.json({}, 200);
