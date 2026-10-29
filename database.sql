@@ -50,3 +50,20 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 CREATE INDEX IF NOT EXISTS idx_channel_bindings_user ON channel_bindings(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+
+
+-- From migrations/0002_inbound_messages.sql
+CREATE TABLE IF NOT EXISTS inbound_messages (
+  id TEXT PRIMARY KEY NOT NULL,
+  channel TEXT NOT NULL CHECK (channel IN ('feishu', 'lark', 'wecom')),
+  event_type TEXT,
+  event_id TEXT,
+  message_id TEXT,
+  chat_id TEXT,
+  chat_type TEXT,
+  sender_open_id TEXT,
+  message_type TEXT,
+  text_snippet TEXT,
+  raw_meta TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

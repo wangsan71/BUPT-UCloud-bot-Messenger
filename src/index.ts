@@ -1,9 +1,13 @@
 import { Hono } from "hono";
 import {
+  extractInboundMeta,
+  getEventType,
+  isMessageReceiveEvent,
   isUrlVerification,
   parseFeishuBody,
   tokenMatches,
 } from "./channels/feishu";
+import { echoReplyEnabled, maybeEchoReply } from "./channels/feishu_reply";
 import { verifyFeishuSignature } from "./crypto/feishu";
 
 export type Env = {
@@ -12,6 +16,8 @@ export type Env = {
   FEISHU_APP_SECRET?: string;
   FEISHU_ENCRYPT_KEY?: string;
   FEISHU_VERIFICATION_TOKEN?: string;
+  /** Set to "1" to enable optional echo reply (needs APP_ID/SECRET + send scopes). */
+  FEISHU_ECHO_REPLY?: string;
   LARK_APP_ID?: string;
   LARK_APP_SECRET?: string;
   LARK_ENCRYPT_KEY?: string;
@@ -36,6 +42,48 @@ app.get("/", (c) =>
 );
 
 app.get("/health", (c) => c.json({ ok: true, phase: 1 }));
+
+async function logInboundMessage(
+  db: D1Database,
+  channel: "feishu" | "lark",
+  meta: ReturnType<typeof extractInboundMeta>,
+): Promise<void> {
+  const id = crypto.randomUUID();
+  try {
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO inbound_messages
+        (id, channel, event_type, event_id, message_id, chat_id, chat_type,
+         sender_open_id, message_type, text_snippet, raw_meta)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        id,
+        channel,
+        meta.eventType ?? null,
+        meta.eventId ?? null,
+        meta.messageId ?? null,
+        meta.chatId ?? null,
+        meta.chatType ?? null,
+        meta.senderOpenId ?? null,
+        meta.messageType ?? null,
+        meta.textSnippet ?? null,
+        JSON.stringify({
+          eventType: meta.eventType,
+          eventId: meta.eventId,
+          messageId: meta.messageId,
+          chatId: meta.chatId,
+        }),
+      )
+      .run();
+  } catch (e) {
+    // Table may not exist yet; never fail the Feishu ack.
+    console.warn(
+      "inbound_log_failed",
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+}
 
 app.post("/webhook/feishu", async (c) => {
   const rawText = await c.req.text();
@@ -91,7 +139,35 @@ app.post("/webhook/feishu", async (c) => {
     return c.json({ ok: false, error: "bad_token" }, 401);
   }
 
-  return c.json({ ok: true, channel: "feishu", phase: 1 });
+  const meta = extractInboundMeta(body);
+  const eventType = getEventType(body);
+
+  // Feishu requires HTTP 200 within ~3s; keep work light, then ack.
+  if (isMessageReceiveEvent(body) || eventType) {
+    await logInboundMessage(c.env.DB, "feishu", meta);
+    console.log("feishu_event", {
+      eventType: meta.eventType,
+      messageId: meta.messageId,
+      chatId: meta.chatId,
+      senderOpenId: meta.senderOpenId,
+      messageType: meta.messageType,
+      textSnippet: meta.textSnippet,
+    });
+
+    if (isMessageReceiveEvent(body) && echoReplyEnabled(c.env)) {
+      c.executionCtx.waitUntil(
+        maybeEchoReply(c.env, meta.chatId, meta.textSnippet).catch((err) => {
+          console.warn(
+            "feishu_echo_failed",
+            err instanceof Error ? err.message : String(err),
+          );
+        }),
+      );
+    }
+  }
+
+  // Empty JSON object is accepted; some guides use {"code":0}.
+  return c.json({}, 200);
 });
 
 app.post("/webhook/lark", async (c) => {
@@ -117,7 +193,21 @@ app.post("/webhook/lark", async (c) => {
     return c.json({ challenge: body.challenge }, 200);
   }
 
-  return c.json({ ok: true, channel: "lark", phase: 1, note: "placeholder" });
+  if (!tokenMatches(body, verificationToken)) {
+    return c.json({ ok: false, error: "bad_token" }, 401);
+  }
+
+  const meta = extractInboundMeta(body);
+  if (isMessageReceiveEvent(body) || getEventType(body)) {
+    await logInboundMessage(c.env.DB, "lark", meta);
+    console.log("lark_event", {
+      eventType: meta.eventType,
+      messageId: meta.messageId,
+      chatId: meta.chatId,
+    });
+  }
+
+  return c.json({}, 200);
 });
 
 app.get("/webhook/wecom", (c) => {

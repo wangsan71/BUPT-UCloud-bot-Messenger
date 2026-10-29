@@ -77,14 +77,14 @@
 
 | 階段 | 內容 | 狀態 |
 |------|------|------|
-| Phase 0 | 倉庫骨架：Hono + wrangler + D1 schema + 環境變數說明 | 進行中 |
-| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由；掃碼導流說明 | 未開始 |
+| Phase 0 | 倉庫骨架：Hono + wrangler + D1 schema + 環境變數說明 | 完成 |
+| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由；掃碼導流說明 | 進行中（飛書收消息 + QR 文檔） |
 | Phase 2 | 登入與 session：bupt-auth + D1；列表／詳情 | 未開始 |
 | Phase 3 | 上傳提交同步 UCloud；提交結果通知 | 未開始 |
 | Phase 4 | Cron：新待辦 diff + 截止提醒；三通道 fan-out | 未開始 |
 | Phase 5 | 自架部署文件、自訂域名、安全審視與測試清單 | 未開始 |
 
-狀態截至 2026-10-30（UTC+8）：需求已收斂（含掃碼加 bot）；Phase 0 骨架落地中。
+狀態截至 2026-10-30（UTC+8）：Phase 0 完成；Phase 1 飛書 webhook 已驗簽／解密，並 ack `im.message.receive_v1`（D1 `inbound_messages`）。掃碼說明見 `docs/FEISHU.zh-Hant.md`。
 
 ## 8. 參考資料
 

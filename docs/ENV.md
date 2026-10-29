@@ -17,12 +17,15 @@ Do **not** commit real values. Use `.dev.vars` locally (gitignored) and `wrangle
 | `FEISHU_APP_SECRET` | App secret |
 | `FEISHU_ENCRYPT_KEY` | Event encrypt key (if enabled) |
 | `FEISHU_VERIFICATION_TOKEN` | Event verification token |
+| `FEISHU_ECHO_REPLY` | Optional: set `1` to echo a short reply after message events (needs App ID/Secret + `im:message:send_as_bot`) |
 
 Webhook path: `POST /webhook/feishu`
 
 **Request URL (use custom domain; China often cannot reach `*.workers.dev`):**
 
-`https://ucloud-bot.playerrone.ccwu.cc/webhook/feishu`
+`https://playerrone.ccwu.cc/webhook/feishu`
+
+Backup (may NXDOMAIN on some campus DNS): `https://ucloud-bot.playerrone.ccwu.cc/webhook/feishu`
 
 ### Encrypt Key / URL verification
 
@@ -38,7 +41,7 @@ Algorithm matches [Feishu receive-events docs](https://open.feishu.cn/document/s
 
 When piping secrets on Windows, avoid a trailing newline (e.g. write bytes to a file and `wrangler secret put NAME < file`). The Worker also `.trim()`s encrypt key / token.
 
-Onboarding: publish the bot and share the **platform add-bot QR** or a **deep-link QR**.
+Onboarding / scopes / QR steps: see **`docs/FEISHU.zh-Hant.md`** (also `.en.md` / `.zh-Hans.md`). Publish the bot and share AppLink QR or client share card.
 
 ## Lark (Global)
 
@@ -80,6 +83,7 @@ FEISHU_APP_ID=
 FEISHU_APP_SECRET=
 FEISHU_ENCRYPT_KEY=
 FEISHU_VERIFICATION_TOKEN=
+FEISHU_ECHO_REPLY=
 LARK_APP_ID=
 LARK_APP_SECRET=
 LARK_ENCRYPT_KEY=

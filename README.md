@@ -10,6 +10,9 @@ Stack: **TypeScript + Hono** on **Cloudflare Workers + D1**.
 - [Plan (Simplified Chinese)](docs/PLAN.zh-Hans.md)
 - [Plan (English)](docs/PLAN.en.md)
 - [Environment & secrets](docs/ENV.md)
+- [Feishu setup / QR / scopes (zh-Hant)](docs/FEISHU.zh-Hant.md)
+- [Feishu setup (en)](docs/FEISHU.en.md)
+- [Feishu setup (zh-Hans)](docs/FEISHU.zh-Hans.md)
 
 ## Onboarding (QR)
 
@@ -18,9 +21,10 @@ Share a **scan-to-add-bot** QR for each channel:
 - Feishu / Lark: Open Platform bot QR, or a deep-link QR that opens the bot chat
 - WeCom: admin “contact me” / app QR, or deep-link QR into the bot
 
-## Phase 0 status
+## Phase status
 
-Repo skeleton is in place: Hono app, webhook placeholders, D1 schema, wrangler config. Channel verify, CAS login, and submit sync come in later phases.
+- **Phase 0** done: Hono + wrangler + D1 schema + env docs.
+- **Phase 1 (in progress):** Feishu webhook decrypt/verify, URL challenge, `im.message.receive_v1` ack + D1 `inbound_messages` log; QR/scopes docs. Lark/WeCom still thin; CAS login later.
 
 ## Develop
 
@@ -43,7 +47,7 @@ npx wrangler d1 migrations apply bupt-ucloud-bot
 npm run deploy
 ```
 
-Point each platform’s event callback URL at your Worker routes above.
+Feishu Request URL: `https://playerrone.ccwu.cc/webhook/feishu` (see `docs/FEISHU.zh-Hant.md`).
 
 ## License note
 
