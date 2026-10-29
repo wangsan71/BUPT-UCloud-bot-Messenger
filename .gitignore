@@ -10,3 +10,8 @@ dist/
 .idea/
 .vscode/
 *.tsbuildinfo
+
+# Feishu Encrypt Key (local copy for console paste)
+.feishu-encrypt-key.txt
+.wrangler-tail-pid.txt
+
