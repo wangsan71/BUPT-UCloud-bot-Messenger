@@ -1,4 +1,4 @@
-name = "bupt-ucloud-bot-messenger"
+﻿name = "bupt-ucloud-bot-messenger"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
@@ -12,7 +12,20 @@ database_name = "bupt-ucloud-bot"
 database_id = "6d175d96-3cd6-42d5-808d-7b73f17e4d50"
 migrations_dir = "migrations"
 
-# Feishu-reachable hostname (new subdomain; does not touch apex Pages/VPN)
+# Primary Feishu-reachable paths on apex (Pages keeps everything else)
+[[routes]]
+pattern = "playerrone.ccwu.cc/webhook/feishu"
+zone_name = "playerrone.ccwu.cc"
+
+[[routes]]
+pattern = "playerrone.ccwu.cc/webhook/*"
+zone_name = "playerrone.ccwu.cc"
+
+[[routes]]
+pattern = "playerrone.ccwu.cc/health"
+zone_name = "playerrone.ccwu.cc"
+
+# Secondary custom domain (campus DNS may NXDOMAIN; keep as backup)
 [[routes]]
 pattern = "ucloud-bot.playerrone.ccwu.cc"
 custom_domain = true
