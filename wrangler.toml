@@ -2,6 +2,7 @@ name = "bupt-ucloud-bot-messenger"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 # Create the D1 database once, then fill in database_id:
 #   npx wrangler d1 create bupt-ucloud-bot
@@ -10,6 +11,11 @@ binding = "DB"
 database_name = "bupt-ucloud-bot"
 database_id = "6d175d96-3cd6-42d5-808d-7b73f17e4d50"
 migrations_dir = "migrations"
+
+# Feishu-reachable hostname (new subdomain; does not touch apex Pages/VPN)
+[[routes]]
+pattern = "ucloud-bot.playerrone.ccwu.cc"
+custom_domain = true
 
 # Example cron for Phase 4 (todo diff / deadline reminders). Leave commented until ready.
 # [triggers]
