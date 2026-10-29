@@ -9,6 +9,7 @@
 在 Cloudflare Workers 上實作以**學生交功課**為主的訊息 bot：
 
 - 通道：飛書（中國）、Lark（Global）、企業微信
+- 導流：**掃 QR Code 加入機器人**（平台後台「添加 bot」QR，或開啟 bot 對話的 deep-link QR）
 - 登入北郵統一認證後：列待辦、上傳並同步提交到教學雲
 - 推送：新作業、截止提醒、提交結果
 - **不做**獨立 Android／iOS App；通知與交功課都「包一層」即時通訊
@@ -21,6 +22,7 @@
 | 技術棧 | TypeScript + Hono，部署 Cloudflare Workers |
 | 主機 | Cloudflare Workers + D1（參考開源 bot）；自有 Cloudflare 帳號部署 |
 | 通道 | 飛書（中國）+ Lark（Global）+ 企業微信 |
+| 導流 | 掃 QR 加 bot（平台 QR／deep-link QR），再於對話內綁定學號 |
 | 角色 | 主要學生交功課 |
 | 上傳 | 同步提交到 UCloud 教學雲 |
 | 登入模型 | 對齊開源 bot：學號 + 統一認證密碼 → token 存 D1 |
@@ -30,23 +32,24 @@
 ## 3. 系統架構
 
 ```
-學生 → 飛書 / Lark / 企微 → Workers + Hono ⇄ D1（session／訂閱）
-                              ↓
-                    統一認證 + apiucloud.bupt.edu.cn
-                              ↑
-                         Cron（待辦 diff／截止）
-                              ↓
-                    推送通知 → 飛書 / Lark / 企微
+學生掃 QR → 飛書 / Lark / 企微 bot 對話 → Workers + Hono ⇄ D1（session／訂閱）
+                                              ↓
+                                    統一認證 + apiucloud.bupt.edu.cn
+                                              ↑
+                                         Cron（待辦 diff／截止）
+                                              ↓
+                                    推送通知 → 飛書 / Lark / 企微
 ```
 
 二次開發以 [YouXam/ucloud-bot](https://github.com/YouXam/ucloud-bot) 為行為藍本，把 Telegram 換成飛書／Lark／企微適配層；教學雲交互沿用社群客戶端路徑（**非官方公開 API**）。
 
 ## 4. 學生 Bot 流程
 
-1. **綁定登入** — 學生在對應 bot 輸入學號與統一認證密碼（安全輸入或一次性指令）。Workers 使用 `@byrdocs/bupt-auth` 換 token，加密後存 D1；不經第三方公開 worker 轉密碼。
-2. **看待辦** — 列出未完成作業（對齊 `/ykt-site/site/student/undone` 等路徑），可看詳情與截止時間。
-3. **上傳與提交** — 傳送文字／圖片／檔案；確認後同步提交到教學雲；回傳成功／失敗作為提交結果通知。
-4. **自動推送** — Cron 或事件觸發：新待辦、截止接近（例如 48h／24h／當日）、提交結果。
+1. **掃碼加入** — 學生掃描飛書／Lark／企微的「添加機器人」QR（或 deep-link QR），進入 bot 對話。QR 可由課程群／海報分發；不強制人人先裝同一款 App（三通道並行）。
+2. **綁定登入** — 學生在對應 bot 輸入學號與統一認證密碼（安全輸入或一次性指令）。Workers 使用 `@byrdocs/bupt-auth` 換 token，加密後存 D1；不經第三方公開 worker 轉密碼。
+3. **看待辦** — 列出未完成作業（對齊 `/ykt-site/site/student/undone` 等路徑），可看詳情與截止時間。
+4. **上傳與提交** — 傳送文字／圖片／檔案；確認後同步提交到教學雲；回傳成功／失敗作為提交結果通知。
+5. **自動推送** — Cron 或事件觸發：新待辦、截止接近（例如 48h／24h／當日）、提交結果。
 
 ## 5. 通知規則
 
@@ -68,19 +71,20 @@
 - 注意 Cloudflare Workers 同域互調限制（開源 bot 曾見 520）；可用自訂域名或 service binding。
 - 開發／除錯時勿把統一認證密碼貼上聊天或公開 issue；本機憑證只留在開發者自己的環境。
 - 開源參考為 GPL-3.0：二次開發須遵守授權條款。
+- QR／deep-link 只用於「打開／添加 bot」，不承載學號或密碼。
 
 ## 7. 開發階段
 
 | 階段 | 內容 | 狀態 |
 |------|------|------|
-| Phase 0 | 倉庫骨架：Hono + wrangler + D1 schema + 環境變數說明 | 未開始 |
-| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由 | 未開始 |
+| Phase 0 | 倉庫骨架：Hono + wrangler + D1 schema + 環境變數說明 | 進行中 |
+| Phase 1 | 通道適配：飛書／Lark／企微 webhook 驗簽與指令路由；掃碼導流說明 | 未開始 |
 | Phase 2 | 登入與 session：bupt-auth + D1；列表／詳情 | 未開始 |
 | Phase 3 | 上傳提交同步 UCloud；提交結果通知 | 未開始 |
 | Phase 4 | Cron：新待辦 diff + 截止提醒；三通道 fan-out | 未開始 |
 | Phase 5 | 自架部署文件、自訂域名、安全審視與測試清單 | 未開始 |
 
-狀態截至 2026-10-29（UTC+8）：需求已收斂；程式碼尚未落地。下一步：倉庫內起 Phase 0 骨架。
+狀態截至 2026-10-30（UTC+8）：需求已收斂（含掃碼加 bot）；Phase 0 骨架落地中。
 
 ## 8. 參考資料
 

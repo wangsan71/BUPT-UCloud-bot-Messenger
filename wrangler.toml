@@ -1,0 +1,22 @@
+name = "bupt-ucloud-bot-messenger"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Create the D1 database once, then fill in database_id:
+#   npx wrangler d1 create bupt-ucloud-bot
+[[d1_databases]]
+binding = "DB"
+database_name = "bupt-ucloud-bot"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Example cron for Phase 4 (todo diff / deadline reminders). Leave commented until ready.
+# [triggers]
+# crons = ["0 * * * *"]
+
+# Secrets (set with `npx wrangler secret put <NAME>`, see docs/ENV.md):
+# FEISHU_APP_ID, FEISHU_APP_SECRET, FEISHU_ENCRYPT_KEY, FEISHU_VERIFICATION_TOKEN
+# LARK_APP_ID, LARK_APP_SECRET, LARK_ENCRYPT_KEY, LARK_VERIFICATION_TOKEN
+# WECOM_CORP_ID, WECOM_AGENT_ID, WECOM_SECRET, WECOM_TOKEN, WECOM_ENCODING_AES_KEY
+# SESSION_ENCRYPTION_KEY

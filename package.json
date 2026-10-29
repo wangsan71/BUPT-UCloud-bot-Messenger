@@ -1,0 +1,27 @@
+﻿{
+  "name": "bupt-ucloud-bot-messenger",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BUPT Teaching Cloud homework messenger bot (Feishu / Lark / WeCom) on Cloudflare Workers",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.10"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250525.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.16.0"
+  },
+  "overrides": {
+    "@cloudflare/workers-types": "$@cloudflare/workers-types"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

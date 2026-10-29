@@ -9,6 +9,7 @@ Student-first messaging bot: sign in and submit homework via **Feishu (China)**,
 Build a **student homework** bot on Cloudflare Workers:
 
 - Channels: Feishu (CN), Lark (Global), WeCom
+- Onboarding: **scan a QR code to add the bot** (platform “add bot” QR, or a deep-link QR that opens the bot chat)
 - After BUPT unified auth: list todos, upload, and sync-submit to Teaching Cloud
 - Push: new assignments, deadline reminders, submit outcomes
 - **No** native Android/iOS app; wrap messaging apps for notify + submit
@@ -21,6 +22,7 @@ Build a **student homework** bot on Cloudflare Workers:
 | Stack | TypeScript + Hono on Cloudflare Workers |
 | Hosting | Workers + D1 (pattern from the open-source bot); deploy with your own Cloudflare account |
 | Channels | Feishu (CN) + Lark (Global) + WeCom |
+| Onboarding | Scan QR to add the bot (platform QR / deep-link QR), then bind student ID in chat |
 | Role | Primarily student submission |
 | Upload | Sync submit to UCloud Teaching Cloud |
 | Auth model | Match the open-source bot: student ID + unified-auth password → tokens in D1 |
@@ -30,23 +32,24 @@ Build a **student homework** bot on Cloudflare Workers:
 ## 3. Architecture
 
 ```
-Student → Feishu / Lark / WeCom → Workers + Hono ⇄ D1 (sessions / subscriptions)
-                                    ↓
-                      Unified auth + apiucloud.bupt.edu.cn
-                                    ↑
-                           Cron (todo diff / deadlines)
-                                    ↓
-                      Push → Feishu / Lark / WeCom
+Student scans QR → Feishu / Lark / WeCom bot chat → Workers + Hono ⇄ D1 (sessions / subscriptions)
+                                                      ↓
+                                        Unified auth + apiucloud.bupt.edu.cn
+                                                      ↑
+                                             Cron (todo diff / deadlines)
+                                                      ↓
+                                        Push → Feishu / Lark / WeCom
 ```
 
 Behavior follows [YouXam/ucloud-bot](https://github.com/YouXam/ucloud-bot), swapping Telegram for Feishu/Lark/WeCom adapters. Teaching Cloud access uses community client routes (**not an official public API**).
 
 ## 4. Student bot flow
 
-1. **Bind / login** — Student enters student ID and unified-auth password in the bot (secure input or one-shot command). Workers obtain tokens via `@byrdocs/bupt-auth`, store them encrypted in D1; never forward passwords through a public third-party worker.
-2. **List todos** — Unfinished work (aligned with paths such as `/ykt-site/site/student/undone`), with detail and deadlines.
-3. **Upload and submit** — Text / images / files; confirm then sync-submit to Teaching Cloud; success/failure becomes a submit-result notification.
-4. **Auto push** — Cron or events: new todos, approaching deadlines (e.g. 48h / 24h / due day), submit results.
+1. **Scan to join** — Student scans the Feishu / Lark / WeCom “add bot” QR (or deep-link QR) and opens the bot chat. QR codes can be shared in course groups or posters; classmates need not install the same app (three channels in parallel).
+2. **Bind / login** — Student enters student ID and unified-auth password in the bot (secure input or one-shot command). Workers obtain tokens via `@byrdocs/bupt-auth`, store them encrypted in D1; never forward passwords through a public third-party worker.
+3. **List todos** — Unfinished work (aligned with paths such as `/ykt-site/site/student/undone`), with detail and deadlines.
+4. **Upload and submit** — Text / images / files; confirm then sync-submit to Teaching Cloud; success/failure becomes a submit-result notification.
+5. **Auto push** — Cron or events: new todos, approaching deadlines (e.g. 48h / 24h / due day), submit results.
 
 ## 5. Notification rules
 
@@ -68,19 +71,20 @@ Fan-out one event to all bound channels; WeCom covers classmates without Feishu 
 - Watch Cloudflare same-zone Worker-to-Worker limits (open-source bot saw HTTP 520); use a custom domain or service bindings.
 - Never paste unified-auth passwords into chat or public issues; keep local credentials on the developer’s own machine only.
 - Upstream reference is GPL-3.0 — derivative work must comply.
+- QR / deep links only open or add the bot; they must not carry student IDs or passwords.
 
 ## 7. Phases
 
 | Phase | Work | Status |
 |-------|------|--------|
-| Phase 0 | Repo skeleton: Hono + wrangler + D1 schema + env docs | Not started |
-| Phase 1 | Channel adapters: Feishu / Lark / WeCom webhook verify + command routing | Not started |
+| Phase 0 | Repo skeleton: Hono + wrangler + D1 schema + env docs | In progress |
+| Phase 1 | Channel adapters: Feishu / Lark / WeCom webhook verify + command routing; QR onboarding notes | Not started |
 | Phase 2 | Login & session: bupt-auth + D1; list / detail | Not started |
 | Phase 3 | Upload submit sync to UCloud; submit-result notify | Not started |
 | Phase 4 | Cron: new-todo diff + deadline reminders; three-channel fan-out | Not started |
 | Phase 5 | Self-host docs, custom domain, security review, test checklist | Not started |
 
-As of 2026-10-29 (UTC+8): requirements settled; code not started. Next: Phase 0 skeleton in the repo.
+As of 2026-10-30 (UTC+8): requirements settled (including scan-to-add-bot); Phase 0 skeleton landing.
 
 ## 8. References
 
